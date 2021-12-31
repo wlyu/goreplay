@@ -1,0 +1,32 @@
+for i in `seq 1 100`  ;
+do
+  curl -XGET -H "token:123456" -H "hello:123"  http://11.11.11.114:30009  -d '{"page":1,"uid":8168079}'
+done
+
+==源码==
+replace github.com/mattbaird/elastigo v0.0.0-20170123220020-2fe47fd29e4b => ./out/mattbaird/elastigo
+
+
+<==============================
+/usr/local/go/pkg/tool/linux_amd64/link: running gcc failed: exit status 1
+/bin/ld: cannot find -lpthread
+/bin/ld: cannot find -lc
+===============================>
+yum install glibc-static.x86_64 -y
+<==============================
+# github.com/google/gopacket/pcap
+vendor/github.com/google/gopacket/pcap/pcap_unix.go:34:18: fatal error: pcap.h: No such file or directory
+===============================>
+https://www.tcpdump.org/#source
+libpcap-1.10.1.tar.gz
+./configure
+make
+make install
+<==============================
+windows:
+https://github.com/buger/goreplay/pull/940
+https://github.com/buger/goreplay/wiki/Running-on-Windows
+1.
+--input-raw :8888 --input-raw-bpf-filter "port 8888"  --output-stdout
+2.
+--input-raw :8888 --input-raw-bpf-filter "port 8888"  --output-http "http://11.11.11.112:30010" --output-http-elasticsearch http://fat01-es-710.lcfat.cc:9200/idc_goreplay_record --output-http-track-response=true

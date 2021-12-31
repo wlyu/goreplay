@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -215,18 +216,26 @@ func (o *HTTPOutput) sendRequest(client *HTTPClient, msg *Message) {
 	if !isRequestPayload(msg.Meta) {
 		return
 	}
-
 	uuid := payloadID(msg.Meta)
 	start := time.Now()
-	resp, err := client.Send(msg.Data)
+	req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(msg.Data)))
+	buf, _ := ioutil.ReadAll(req.Body)
+	body := string(buf)
+	req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 	stop := time.Now()
-
-	if err != nil {
-		Debug(1, fmt.Sprintf("[HTTP-OUTPUT] error when sending: %q", err))
-		return
-	}
-	if resp == nil {
-		return
+	var resp []byte
+	if len(client.config.rawURL) > 5 {
+		if err == nil {
+			resp, err = client.Send(req)
+		}
+		stop = time.Now()
+		if err != nil {
+			Debug(1, fmt.Sprintf("[HTTP-OUTPUT] error when sending: %q", err))
+			return
+		}
+		if resp == nil {
+			return
+		}
 	}
 
 	if o.config.TrackResponses {
@@ -234,7 +243,7 @@ func (o *HTTPOutput) sendRequest(client *HTTPClient, msg *Message) {
 	}
 
 	if o.elasticSearch != nil {
-		o.elasticSearch.ResponseAnalyze(msg.Data, resp, start, stop)
+		o.elasticSearch.ResponseAnalyze(body, msg.Data, resp, start, stop)
 	}
 }
 
@@ -284,15 +293,10 @@ func NewHTTPClient(config *HTTPOutputConfig) *HTTPClient {
 }
 
 // Send sends an http request using client create by NewHTTPClient
-func (c *HTTPClient) Send(data []byte) ([]byte, error) {
-	var req *http.Request
+func (c *HTTPClient) Send(req *http.Request) ([]byte, error) {
 	var resp *http.Response
 	var err error
 
-	req, err = http.ReadRequest(bufio.NewReader(bytes.NewReader(data)))
-	if err != nil {
-		return nil, err
-	}
 	// we don't send CONNECT or OPTIONS request
 	if req.Method == http.MethodConnect {
 		return nil, nil

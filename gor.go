@@ -69,7 +69,6 @@ func main() {
 	if os.Getenv("GOMAXPROCS") == "" {
 		runtime.GOMAXPROCS(runtime.NumCPU() * 2)
 	}
-
 	args := os.Args[1:]
 	var plugins *InOutPlugins
 	if len(args) > 0 && args[0] == "file-server" {

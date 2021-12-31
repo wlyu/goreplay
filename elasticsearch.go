@@ -29,15 +29,19 @@ type ESPlugin struct {
 }
 
 type ESRequestResponse struct {
-	ReqURL               string `json:"Req_URL"`
-	ReqMethod            string `json:"Req_Method"`
-	ReqUserAgent         string `json:"Req_User-Agent"`
-	ReqAcceptLanguage    string `json:"Req_Accept-Language,omitempty"`
-	ReqAccept            string `json:"Req_Accept,omitempty"`
-	ReqAcceptEncoding    string `json:"Req_Accept-Encoding,omitempty"`
-	ReqIfModifiedSince   string `json:"Req_If-Modified-Since,omitempty"`
-	ReqConnection        string `json:"Req_Connection,omitempty"`
-	ReqCookies           string `json:"Req_Cookies,omitempty"`
+	ReqURL             string `json:"Req_URL"`
+	ReqMethod          string `json:"Req_Method"`
+	ReqUserAgent       string `json:"Req_User-Agent"`
+	ReqAcceptLanguage  string `json:"Req_Accept-Language,omitempty"`
+	ReqAccept          string `json:"Req_Accept,omitempty"`
+	ReqAcceptEncoding  string `json:"Req_Accept-Encoding,omitempty"`
+	ReqIfModifiedSince string `json:"Req_If-Modified-Since,omitempty"`
+	ReqConnection      string `json:"Req_Connection,omitempty"`
+	ReqCookies         string `json:"Req_Cookies,omitempty"`
+
+	ReqHeaders map[string]string `json:"Req_Headers"`
+	ReqBody    string            `json:"Req_Body"`
+
 	RespStatus           string `json:"Resp_Status"`
 	RespStatusCode       string `json:"Resp_Status-Code"`
 	RespProto            string `json:"Resp_Proto,omitempty"`
@@ -125,14 +129,15 @@ func (p *ESPlugin) RttDurationToMs(d time.Duration) int64 {
 }
 
 // ResponseAnalyze send req and resp to ES
-func (p *ESPlugin) ResponseAnalyze(req, resp []byte, start, stop time.Time) {
-	if len(resp) == 0 {
-		// nil http response - skipped elasticsearch export for this request
-		return
-	}
+func (p *ESPlugin) ResponseAnalyze(reqBody string, req, resp []byte, start, stop time.Time) {
+
 	t := time.Now()
 	rtt := p.RttDurationToMs(stop.Sub(start))
-
+	mimeHeader := proto.ParseHeaders(req)
+	headers := make(map[string]string)
+	for k, v := range mimeHeader {
+		headers[k] = strings.Join(v, ", ")
+	}
 	esResp := ESRequestResponse{
 		ReqURL:               string(proto.Path(req)),
 		ReqMethod:            string(proto.Method(req)),
@@ -143,6 +148,8 @@ func (p *ESPlugin) ResponseAnalyze(req, resp []byte, start, stop time.Time) {
 		ReqIfModifiedSince:   string(proto.Header(req, []byte("If-Modified-Since"))),
 		ReqConnection:        string(proto.Header(req, []byte("Connection"))),
 		ReqCookies:           string(proto.Header(req, []byte("Cookie"))),
+		ReqHeaders:           headers,
+		ReqBody:              reqBody,
 		RespStatus:           string(proto.Status(resp)),
 		RespStatusCode:       string(proto.Status(resp)),
 		RespProto:            string(proto.Method(resp)),
